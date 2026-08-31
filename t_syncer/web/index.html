@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>T-Syncer</title>
+  <link rel="icon" type="image/svg+xml" href="/web/favicon.svg">
+  <link rel="stylesheet" href="/web/app.css">
+</head>
+<body>
+  <div class="app">
+    <div class="app-inner">
+      <header class="header">
+        <div class="header-start">
+          <button class="icon-btn ghost" type="button" title="Hide or show the calendar sidebar" data-action="toggle-sidebar">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <rect x="2" y="3" width="12" height="10" rx="2.4"></rect>
+              <path d="M6.2 3.4v9.2"></path>
+            </svg>
+          </button>
+          <a class="brand" href="https://github.com/romi477/t-syncer" target="_blank" rel="noopener noreferrer" title="Open the T-Syncer repository on GitHub"><span class="brand-t">T‑</span><span class="brand-rest">Syncer</span><span class="brand-version">v1.0.0</span></a>
+        </div>
+        <nav class="tabs" aria-label="Main">
+          <button class="seg is-on" type="button" data-tab="calendar">Calendar</button>
+          <button class="seg" type="button" data-tab="reports">Reports</button>
+        </nav>
+        <div class="header-end">
+          <select class="select" data-field="workspace" aria-label="Workspace">
+            <option value="" disabled selected>No workspace</option>
+          </select>
+          <button class="icon-btn" type="button" title="Workspace settings" data-action="open-settings">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round">
+              <circle cx="8" cy="8" r="4.4" stroke-width="1.2"></circle>
+              <circle cx="8" cy="8" r="1.7" stroke-width="1.2"></circle>
+              <path d="M12.4 8h1.7M1.9 8h1.7M8 12.4v1.7M8 1.9v1.7M11.11 11.11l1.13 1.13M3.76 3.76l1.13 1.13M4.89 11.11l-1.13 1.13M12.24 3.76l-1.13 1.13" stroke-width="1.7"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="stage">
+        <aside class="sidebar">
+          <div class="sidebar-ws is-empty">
+            <span class="sidebar-ws-name" data-field="active-workspace-name">No workspace</span>
+            <span class="badge" data-field="active-workspace-total" hidden>0m</span>
+          </div>
+          <div class="sidebar-cal">
+            <div class="cal-head">
+              <strong data-field="month-label">August 2026</strong>
+              <div class="mini-nav">
+                <button type="button" data-action="prev-month" title="Previous month" aria-label="Previous month">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 3 5 8l5 5"></path>
+                  </svg>
+                </button>
+                <button type="button" data-action="next-month" title="Next month" aria-label="Next month">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="cal-grid" data-field="calendar"></div>
+          </div>
+          <div class="sidebar-push">
+            <div class="stat"><span>Not pushed</span><b data-field="month-pending">0m</b></div>
+            <div class="push-pair">
+              <button class="btn btn-outline btn-small is-locked" type="button" data-action="push-week" disabled>Week locked</button>
+              <button class="btn btn-outline btn-small is-locked" type="button" data-action="push-month" disabled>Month locked</button>
+            </div>
+          </div>
+          <div class="sidebar-foot">
+            <a class="quiet-link" data-field="swagger-link" href="/docs" target="_blank" rel="noopener noreferrer">
+              swagger
+            </a>
+          </div>
+        </aside>
+
+        <main class="main" data-view="calendar">
+          <div class="day-bar">
+            <div class="day-nav">
+              <button class="btn btn-nav" type="button" data-action="prev-day" title="Previous day" aria-label="Previous day">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M10 3 5 8l5 5"></path>
+                </svg>
+              </button>
+              <button class="btn btn-nav" type="button" data-action="next-day" title="Next day" aria-label="Next day">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 3l5 5-5 5"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="bar-heading">
+              <span class="day-title" data-field="date-label"></span>
+              <span class="bar-today" data-field="today-jump" hidden>
+                <span class="bar-slash">/</span>
+                <button class="link" type="button" data-action="today">Today</button>
+              </span>
+              <span class="day-meta">
+                <span class="bar-sep">·</span>
+                <span class="day-stat" data-field="day-total">0m</span>
+              </span>
+            </div>
+            <div class="day-actions">
+              <button class="btn btn-save" type="button" data-action="save-card" title="Save card (Ctrl+S)" disabled>Save card</button>
+              <button class="btn btn-outline" type="button" data-action="sync-card" title="Push unsynced lines for this day" disabled>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <g transform="rotate(-22 8 8)">
+                    <path d="M3.8 4.2a5.2 5.2 0 0 1 8.1 0"></path>
+                    <path d="M3.8 4.2v2.8h2.8"></path>
+                    <path d="M12.2 11.8a5.2 5.2 0 0 1-8.1 0"></path>
+                    <path d="M12.2 11.8V9h-2.8"></path>
+                  </g>
+                </svg>
+                Sync card
+              </button>
+            </div>
+          </div>
+          <div class="sheet-body">
+            <div data-field="lines-wrap">
+              <div class="cols">
+                <span></span>
+                <span>ISSUE</span>
+                <span>TAG</span>
+                <div class="range-head">
+                  <span>START</span>
+                  <span>END</span>
+                </div>
+                <span>± TIME</span>
+                <span></span>
+                <span class="num">TOTAL</span>
+                <span class="num">&nbsp;</span>
+              </div>
+              <div data-field="lines"></div>
+              <div class="add-row">
+                <button class="link" type="button" data-action="add-line" title="Add line (Ctrl+I)">+ Add line</button>
+                <span class="hint">Overlapping ranges are allowed · nothing reaches Jira until you push</span>
+              </div>
+            </div>
+            <div class="empty" data-field="empty-day" hidden>
+              <div class="empty-copy">
+                <div class="empty-ico">
+                  <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+                    <rect x="2" y="3" width="12" height="11" rx="2.5"></rect>
+                    <path d="M2 6.4h12M5.6 3V1.8M10.4 3V1.8"></path>
+                  </svg>
+                </div>
+                <h2>Nothing logged on this day</h2>
+                <p>Add a line, then fill issue, times, and message. Duplicate a line to reuse its issue and tag.</p>
+              </div>
+              <button class="btn btn-outline" type="button" data-action="add-line">Add the first line</button>
+            </div>
+          </div>
+        </main>
+
+        <main class="main" data-view="reports" hidden>
+          <div class="rep-bar">
+            <div class="day-nav">
+              <button class="btn btn-nav" type="button" data-action="prev-period" title="Previous period" aria-label="Previous period">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M10 3 5 8l5 5"></path>
+                </svg>
+              </button>
+              <button class="btn btn-nav" type="button" data-action="next-period" title="Next period" aria-label="Next period">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M6 3l5 5-5 5"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="bar-heading">
+              <span class="day-title" data-field="period-label">August 2026</span>
+              <span class="bar-today" data-field="report-today-jump" hidden>
+                <span class="bar-slash">/</span>
+                <button class="link" type="button" data-action="report-today">Today</button>
+              </span>
+            </div>
+            <div class="tabs">
+              <button class="seg is-on" type="button" data-period="month">Month</button>
+              <button class="seg" type="button" data-period="week">Week</button>
+            </div>
+          </div>
+          <div class="rep-body">
+            <div class="kpis">
+              <div class="kpi"><span>Hours in period</span><b data-field="rep-total">0m</b></div>
+              <div class="kpi"><span>Distinct tasks</span><b data-field="rep-tasks">0</b></div>
+              <div class="kpi"><span>Days with work</span><b data-field="rep-days">0</b></div>
+            </div>
+            <div class="table" data-field="report-table">
+              <div class="t-head">
+                <span>TASK</span>
+                <span>TIME</span>
+                <span>DAYS WITH WORK</span>
+                <span>FIRST – LAST</span>
+                <span style="text-align: right;">SHARE</span>
+              </div>
+              <div data-field="report-rows"></div>
+            </div>
+            <span class="hint" style="display: block; margin-top: 10px;">Local aggregation from SQLite — drafts, errors and synced lines all count.</span>
+          </div>
+          <div class="empty" data-field="empty-report" hidden>
+            <h2>No time logged in this period</h2>
+            <p>Pick another period, or open a day in the calendar and start a card.</p>
+          </div>
+        </main>
+      </div>
+
+      <div class="overlay" data-view="settings" hidden>
+        <form class="sheet" data-form="workspace" data-mode="edit">
+          <div>
+            <h2 data-field="sheet-title">Workspace settings</h2>
+            <p class="sub">One Jira Cloud site. Saving probes GET /rest/api/3/myself.</p>
+          </div>
+          <div class="form">
+            <label>Name
+              <input class="field" name="name" required>
+            </label>
+            <label>Jira base URL
+              <input class="field" name="jira_base_url" placeholder="https://example.atlassian.net" required>
+            </label>
+            <div class="form-2">
+              <label>Jira email
+                <input class="field" name="jira_email" type="email" required>
+              </label>
+              <label>Timezone
+                <select class="field" name="timezone">
+                  <option value="Europe/Kyiv">Europe/Kyiv</option>
+                  <option value="Europe/Warsaw">Europe/Warsaw</option>
+                  <option value="Europe/Berlin">Europe/Berlin</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </label>
+            </div>
+            <label>API token — blank keeps the stored one
+              <input class="field" name="jira_api_token" type="password" placeholder="••••••••••••" autocomplete="off">
+            </label>
+          </div>
+          <div class="sheet-actions">
+            <button class="icon-btn ghost trash" type="button" data-action="delete-workspace" title="Delete workspace" hidden>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3.2 4.5h9.6"></path>
+                <path d="M6.2 4.5V3.4h3.6V4.5"></path>
+                <path d="M4.5 4.5l.65 8.1h5.7l.65-8.1"></path>
+                <path d="M6.6 6.6v4.2M9.4 6.6v4.2"></path>
+              </svg>
+            </button>
+            <button class="btn" type="button" data-action="close-settings">Cancel</button>
+            <button class="btn btn-primary" type="submit" data-field="sheet-action">Probe &amp; save</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="overlay" data-view="metadata" hidden>
+        <div class="sheet sheet-metadata">
+          <div class="sheet-title-row">
+            <h2>Worklog metadata</h2>
+            <button class="btn btn-small" type="button" data-action="close-metadata">Close</button>
+          </div>
+          <pre class="metadata-json" data-field="metadata-json"></pre>
+        </div>
+      </div>
+
+      <div class="toast" data-view="toast" hidden>
+        <div class="toast-head">
+          <strong data-field="toast-title">Push worklog</strong>
+          <button type="button" data-action="dismiss-toast">Dismiss</button>
+        </div>
+        <div data-field="toast-items"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/web/app.js"></script>
+</body>
+</html>

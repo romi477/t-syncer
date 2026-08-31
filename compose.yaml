@@ -1,0 +1,29 @@
+name: t-syncer-composer
+
+services:
+  app:
+    container_name: tsyncer
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: t_syncer/Dockerfile
+    ports:
+      - "127.0.0.1:${TSYNCER_PORT:?}:${TSYNCER_PORT:?}"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - ./${TSYNCER_SQLITE_DB_PATH:?}:/opt/app/${TSYNCER_SQLITE_DB_PATH:?}
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "python -c \"import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ['TSYNCER_PORT'])\""
+      ]
+      interval: 600s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
