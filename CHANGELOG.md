@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 - Worklog message: the first letter is capitalized as it is typed.
 - Reports: the three summary cards carry the application blue instead of neutral ink.
+- Ctrl+Cmd+← and Ctrl+Cmd+→ move between the Calendar and Reports tabs, wrapping around.
 
 ## [1.0.0] - 2026-08-31
 

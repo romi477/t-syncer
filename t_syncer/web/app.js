@@ -799,6 +799,26 @@ function cardShortcutAllowed() {
   return $("[data-view=settings]").hidden && $("[data-view=metadata]").hidden;
 }
 
+const TABS = ["calendar", "reports"];
+
+async function showTab(name) {
+  state.tab = name;
+  $all("[data-tab]").forEach((tab) => tab.classList.toggle("is-on", tab.dataset.tab === state.tab));
+  $("[data-view=calendar]").hidden = state.tab !== "calendar";
+  $("[data-view=reports]").hidden = state.tab !== "reports";
+  if (state.tab === "reports") {
+    await loadReport();
+  }
+}
+
+function tabShortcutAllowed() {
+  if (state.busy || !state.workspaceId) {
+    return false;
+  }
+
+  return $("[data-view=settings]").hidden && $("[data-view=metadata]").hidden;
+}
+
 function calendarShortcutAllowed(event) {
   if (!cardShortcutAllowed()) {
     return false;
@@ -1007,13 +1027,7 @@ document.addEventListener("click", async (event) => {
   const line = row ? findLine(row.dataset.id) : null;
   try {
     if (actionNode.dataset.tab) {
-      state.tab = actionNode.dataset.tab;
-      $all("[data-tab]").forEach((tab) => tab.classList.toggle("is-on", tab.dataset.tab === state.tab));
-      $("[data-view=calendar]").hidden = state.tab !== "calendar";
-      $("[data-view=reports]").hidden = state.tab !== "reports";
-      if (state.tab === "reports") {
-        await loadReport();
-      }
+      await showTab(actionNode.dataset.tab);
       return;
     }
     if (actionNode.dataset.period) {
@@ -1283,6 +1297,29 @@ window.addEventListener("keydown", (event) => {
   // Even when the button is disabled: never let the browser Save Page instead.
   event.preventDefault();
   $(`[data-action=${action}]`).click();
+});
+
+// Ctrl+Cmd+Left / Ctrl+Cmd+Right walk the tabs. The ring wraps, so with two
+// tabs either arrow reaches the other one from wherever you are. Both modifiers
+// are required: Ctrl+Arrow alone is a Mac Spaces gesture, Cmd+Arrow is browser
+// history, and Alt+Arrow already moves the calendar day.
+const TAB_STEPS = {ArrowLeft: -1, ArrowRight: 1};
+
+window.addEventListener("keydown", async (event) => {
+  if (!(event.ctrlKey && event.metaKey) || event.altKey || event.shiftKey) {
+    return;
+  }
+  const step = TAB_STEPS[event.code];
+  if (step === undefined || !tabShortcutAllowed()) {
+    return;
+  }
+  event.preventDefault();
+  const next = (TABS.indexOf(state.tab) + step + TABS.length) % TABS.length;
+  try {
+    await showTab(TABS[next]);
+  } catch (error) {
+    showToast("Error", [{ok: false, text: error.message}]);
+  }
 });
 
 boot();
