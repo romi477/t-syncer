@@ -52,9 +52,6 @@ def test_issue_and_totals_use_semantic_data_colors(client):
     assert "color: var(--issue-ink)" in dur_block
     assert "font-weight: 500" in dur_block
 
-    kpi_block = css.split(".kpi b", 1)[1].split("}", 1)[0]
-    assert "color: var(--issue-ink)" in kpi_block
-
     key_block = css.split(".t-row .key", 1)[1].split("}", 1)[0]
     assert "color: var(--issue-ink)" in key_block
 

@@ -1,6 +1,6 @@
 [project]
 name = "tsyncer"
-version = "1.0.0"
+version = "1.0.1"
 description = "Local-first Jira worklog timesheet"
 requires-python = ">=3.12,<3.13"
 dependencies = [

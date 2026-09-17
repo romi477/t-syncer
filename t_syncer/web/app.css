@@ -936,16 +936,16 @@ select.field[name=tag] {
   gap: 3px;
   padding: 13px 15px;
   border-radius: 10px;
-  background: #eef1f7;
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07);
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 0.5px rgba(47, 93, 138, 0.18);
 }
-.kpi span { font-size: 11.5px; color: var(--muted); }
+.kpi span { font-size: 11.5px; color: var(--blue-ink); opacity: 0.75; }
 .kpi b {
   font-size: 27px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--issue-ink);
+  color: var(--blue-ink);
 }
 
 .table {

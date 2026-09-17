@@ -67,6 +67,10 @@ function liveTime(value) {
   return value.replaceAll(" ", ":");
 }
 
+function capitalizeFirst(value) {
+  return value.slice(0, 1).toUpperCase() + value.slice(1);
+}
+
 function digitsOf(value) {
   return String(value).replace(/\D/g, "");
 }
@@ -702,7 +706,16 @@ function bindRows() {
       refreshDirty();
     });
     row.querySelector("[name=message]").addEventListener("input", (event) => {
-      line.message = event.target.value;
+      const field = event.target;
+      const capitalized = capitalizeFirst(field.value);
+      if (capitalized !== field.value) {
+        // Same length, so the caret belongs where it was: assigning value alone
+        // would throw it to the end of the field mid-word.
+        const caret = field.selectionStart;
+        field.value = capitalized;
+        field.setSelectionRange(caret, caret);
+      }
+      line.message = field.value;
       refreshDirty();
     });
     row.querySelectorAll("[data-delta]").forEach((button) => {

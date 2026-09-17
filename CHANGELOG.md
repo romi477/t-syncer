@@ -3,6 +3,11 @@
 All notable changes to T-Syncer are recorded here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-09-17
+
+- Worklog message: the first letter is capitalized as it is typed.
+- Reports: the three summary cards carry the application blue instead of neutral ink.
+
 ## [1.0.0] - 2026-08-31
 
 - Workspaces: one Jira Cloud site each, probed with `GET /rest/api/3/myself` on save; the API token is never returned in full.
@@ -16,4 +21,5 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Web UI at `/web`, JSON API at `/api`, and OpenAPI (`/docs`, `/redoc`, `/openapi.json`) behind HTTP Basic Auth; only `/health` is public.
 - Docker Compose setup with a `/health` healthcheck.
 
+[1.0.1]: https://github.com/romi477/t-syncer/releases/tag/v1.0.1
 [1.0.0]: https://github.com/romi477/t-syncer/releases/tag/v1.0.0
