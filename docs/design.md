@@ -41,6 +41,9 @@ One Jira Cloud site.
 | `jira_email` | Cloud account email. HTTP Basic user against Jira. |
 | `jira_api_token` | Atlassian API token. Never returned in full (`****`). Blank on update = keep stored token. |
 | `timezone` | IANA name, e.g. `Europe/Kyiv`. Used only to compose `started` on push. |
+| `day_start` | `HH:MM`, default `09:00`. Fallback start when a line has no start and no earlier end on the card. |
+| `day_hours` | Whole number 1–24, default 8. Length of a working day. Title capacity and the blue projection use it. |
+| `report_hours` | Whole number from `day_hours` through 24, default 10. How many hour-cells the Days report draws. |
 | `jira_display_name` | Cached from `GET /rest/api/3/myself` (“connected as …”). Not a form field. |
 
 No Jira user/account id on the workspace. `myself` only **probes** that email+token work. Worklogs are created as that authenticated Jira user.
@@ -51,7 +54,7 @@ Sidebar **+** opens the same settings sheet as create (title **New workspace**).
 
 ## Day card
 
-One calendar day inside a workspace: the date plus its lines plus the running total. It is not a separate table — workspace + `work_date` is enough.
+One calendar day inside a workspace: the date plus its lines plus the running total. A **Holiday** toggle is stored separately (`day_marks`). It does not delete or hide hours.
 
 Daily total = sum of `duration_minutes` for all lines on that date (draft, error, and synced).
 
@@ -75,7 +78,9 @@ Overlapping ranges on the same day **are allowed**. Overnight ranges are not.
 
 Time shorthand: `9 00` / `930` / `9:0` → `09:00`. Non-numeric clock values save as empty, not as a 4xx.
 
-Time steppers: ±1h / ±30m / ±15m. If start is empty, it becomes the previous line’s end on this card, else `09:00`. Plus adds to end; minus shrinks end and is a no-op if that would make end ≤ start. Crossing midnight is not applied.
+Time steppers: ±1h / ±30m / ±15m. If start is empty, it becomes the previous line’s end on this card, else the workspace `day_start` (`09:00` unless changed). Plus and minus both move the end, including to a time earlier than the start; that end is highlighted. They do not step before 00:00 or past midnight. `00:00` as an end still closes the day (`22:00–00:00`).
+
+Duplicate copies issue, tag, and message. Start and end both become the latest end among the lines on that day (`00:00` counts as end of day).
 
 ## Tags
 
@@ -106,9 +111,13 @@ Read-only aggregation of **local** lines in the current workspace (draft, error,
 
 Anchor date = `date` query param, else today.
 
-Totals: hours and how many distinct issue keys had time in the period. Per task (sorted by hours descending): issue key, total time, days with work, first and last `work_date`, share of the period. Lines with an empty issue key are not counted as tasks.
+The page opens on **Days**: one row per date in the period, numbered from 1, with one hour-cell per hour up to the workspace `report_hours` (default 10) and the logged duration. The first `day_hours` cells (default 8) are the working day; cells past that are amber overtime, and time beyond `report_hours` does not grow the bar. Saturday, Sunday, and holidays are drawn in rose. **Tasks** is the other mode.
 
-No tag breakdown, no charts, no CSV.
+The title is `September 2026 / 19d (152h: 96h)` when a working day is 8h. The first figure is working days × `day_hours`. The blue figure is hours already logged on past days, today and later working days topped up to `day_hours`, and logged time kept on weekends and holidays. Monday–Friday count. A holiday does not, even when that day has logged hours. The hours themselves stay in the totals.
+
+**Tasks** groups issue keys by the project code before the hyphen (`QBO-125` under `QBO`). Groups are ordered by hours and always shown open. Under each code: issue key, total time, days with work, first and last `work_date`, share of the period. Lines with an empty issue key are not counted as tasks. Summary cards: hours, distinct tasks, days with work.
+
+No tag breakdown, no CSV.
 
 ## Jira comment
 

@@ -26,6 +26,7 @@ const state = {
   dirty: false,
   tab: "calendar",
   period: "month",
+  reportView: "days",
   nextTemp: 1,
   savedFingerprint: "[]",
   busy: false,
@@ -561,6 +562,9 @@ function renderCalendar() {
     if (iso === state.date) {
       classes.push("is-on");
     }
+    if (summary && summary.holiday) {
+      classes.push("is-holiday");
+    }
     let dot = "";
     if (summary) {
       const kind = summary.status === "error" ? "is-err" : (summary.status === "synced" ? "is-ok" : "is-draft");
@@ -579,6 +583,7 @@ function renderCalendar() {
 async function loadDay() {
   if (!state.workspaceId) {
     state.lines = [];
+    setHolidayToggle(false);
     rememberSavedCard();
     markDirty(false);
     renderDay();
@@ -586,6 +591,7 @@ async function loadDay() {
   }
   const card = await api(`/api/workspace/${state.workspaceId}/days/${state.date}`);
   state.lines = card.lines || [];
+  setHolidayToggle(Boolean(card.holiday));
   rememberSavedCard();
   markDirty(false);
   renderDay();
@@ -926,28 +932,144 @@ async function loadReport() {
   const body = await api(`/api/workspace/${state.workspaceId}/reports?period=${state.period}&date=${state.date}`);
   const start = parseIso(body.from);
   const end = parseIso(body.to);
-  $("[data-field=period-label]").textContent = periodLabel(state.period, body.from, body.to);
+  const dayLength = dayHours();
+  const capacity = `${body.working_days * dayLength}h`;
+  const forecast = formatDuration(projectedMinutes(body.days || [], dayLength));
+  $("[data-field=period-label]").innerHTML = `${periodLabel(state.period, body.from, body.to)} / ${body.working_days}d (${capacity}: <span class="period-forecast">${forecast}</span>)`;
   $("[data-field=report-today-jump]").hidden = reportContainsToday(body.from, body.to);
   $("[data-field=rep-total]").textContent = formatDuration(body.total_minutes);
   $("[data-field=rep-tasks]").textContent = String(body.task_count);
   $("[data-field=rep-days]").textContent = String(body.days_with_work);
-  const empty = body.task_count === 0;
+  const showDays = state.reportView === "days";
+  const empty = !showDays && body.task_count === 0;
   $("[data-field=empty-report]").hidden = !empty;
-  $("[data-field=report-table]").hidden = empty;
-  $("[data-field=report-rows]").innerHTML = (body.tasks || []).map((task) => {
-    const pct = Math.round((task.share || 0) * 100);
-    const span = task.first_date === task.last_date
-      ? formatShort(task.first_date)
-      : `${formatShort(task.first_date)} – ${formatShort(task.last_date)}`;
+  $("[data-field=report-table]").hidden = empty || showDays;
+  $("[data-field=day-table]").hidden = empty || !showDays;
+  const today = isoDate(new Date());
+  const shown = reportHours();
+  const extra = Math.max(0, shown - dayLength);
+  const overtimeCells = (minutes) => extra
+    ? `<span class="hour-extra" style="grid-template-columns:repeat(${extra},1fr)">${hourCells(minutes, dayLength, extra)}</span>`
+    : "";
+  $("[data-field=day-rows]").innerHTML = (body.days || []).map((day, index) => {
+    const date = parseIso(day.date);
+    const weekday = WEEKDAYS[(date.getDay() + 6) % 7];
+    const weekend = date.getDay() === 0 || date.getDay() === 6;
 
-    return `<div class="t-row">
-      <span class="key">${escapeHtml(task.issue_key)}</span>
-      <span class="time">${formatDuration(task.total_minutes)}</span>
-      <span class="muted">${task.days}</span>
-      <span class="muted">${span}</span>
-      <div class="share"><span>${pct}%</span><span class="bar"><i style="width:${pct}%"></i></span></div>
+    return `<div class="t-row t-days${weekend ? " is-weekend" : ""}${day.holiday ? " is-holiday" : ""}${day.date === today ? " is-today" : ""}">
+      <span class="key"><span class="day-no">${index + 1}</span>${weekday}, ${date.getDate()} ${MONTHS[date.getMonth()].slice(0, 3)}</span>
+      <span class="hour-cells${extra ? " is-over" : ""}" style="${extra ? `grid-template-columns:${dayLength}fr ${extra}fr` : ""}"><span class="hour-day" style="grid-template-columns:repeat(${dayLength},1fr)">${hourCells(day.total_minutes, 0, dayLength)}</span>${overtimeCells(day.total_minutes)}</span>
+      <span class="time">${formatDuration(day.total_minutes)}</span>
     </div>`;
   }).join("");
+  $("[data-field=report-rows]").innerHTML = renderTaskGroups(body.tasks || []);
+}
+
+function taskCode(issueKey) {
+  const key = issueKey || "";
+  const dash = key.indexOf("-");
+
+  return dash > 0 ? key.slice(0, dash) : key;
+}
+
+function taskSpan(first, last) {
+  if (!first) {
+    return "";
+  }
+
+  return first === last ? formatShort(first) : `${formatShort(first)} – ${formatShort(last)}`;
+}
+
+function renderTaskRow(task, child) {
+  const pct = Math.round((task.share || 0) * 100);
+
+  return `<div class="t-row${child ? " is-child" : ""}">
+    <span class="key">${escapeHtml(task.issue_key)}</span>
+    <span class="time">${formatDuration(task.total_minutes)}</span>
+    <span class="muted">${task.days}</span>
+    <span class="muted">${taskSpan(task.first_date, task.last_date)}</span>
+    <div class="share"><span>${pct}%</span><span class="bar"><i style="width:${pct}%"></i></span></div>
+  </div>`;
+}
+
+function renderTaskGroups(tasks) {
+  const groups = new Map();
+  for (const task of tasks) {
+    const code = taskCode(task.issue_key);
+    if (!groups.has(code)) {
+      groups.set(code, []);
+    }
+    groups.get(code).push(task);
+  }
+  const ordered = [...groups.entries()].sort((left, right) => {
+    const leftMinutes = left[1].reduce((sum, task) => sum + task.total_minutes, 0);
+    const rightMinutes = right[1].reduce((sum, task) => sum + task.total_minutes, 0);
+
+    return rightMinutes - leftMinutes || left[0].localeCompare(right[0]);
+  });
+
+  return ordered.map(([code, rows]) => {
+    const minutes = rows.reduce((sum, task) => sum + task.total_minutes, 0);
+    const share = rows.reduce((sum, task) => sum + (task.share || 0), 0);
+    const first = rows.map((task) => task.first_date).sort()[0];
+    const last = rows.map((task) => task.last_date).sort().at(-1);
+    const pct = Math.round(share * 100);
+    const head = `<div class="t-row is-group">
+      <span class="key">${escapeHtml(code)}</span>
+      <span class="time">${formatDuration(minutes)}</span>
+      <span class="muted">—</span>
+      <span class="muted">${taskSpan(first, last)}</span>
+      <div class="share"><span>${pct}%</span><span class="bar"><i style="width:${pct}%"></i></span></div>
+    </div>`;
+
+    return head + rows.map((task) => renderTaskRow(task, true)).join("");
+  }).join("");
+}
+
+function wholeHours(value, fallback, min, max) {
+  const number = Number(value);
+
+  return Number.isInteger(number) && number >= min && number <= max ? number : fallback;
+}
+
+function dayHours() {
+  const workspace = currentWorkspace();
+
+  return wholeHours(workspace && workspace.day_hours, 8, 1, 24);
+}
+
+function reportHours() {
+  const workspace = currentWorkspace();
+  const day = dayHours();
+  const value = wholeHours(workspace && workspace.report_hours, 10, day, 24);
+
+  return Math.max(value, day);
+}
+
+function hourCells(minutes, startHour, count) {
+  return Array.from({length: count}, (_, index) => {
+    const filled = Math.max(0, Math.min(1, (minutes - (startHour + index) * 60) / 60));
+
+    return `<i style="--fill:${filled}"></i>`;
+  }).join("");
+}
+
+function projectedMinutes(days, dayLength) {
+  const today = isoDate(new Date());
+  const full = dayLength * 60;
+  let total = 0;
+  for (const day of days) {
+    const logged = day.total_minutes || 0;
+    const date = parseIso(day.date);
+    const working = date.getDay() !== 0 && date.getDay() !== 6 && !day.holiday;
+    if (day.date < today || !working) {
+      total += logged;
+    } else {
+      total += Math.max(logged, full);
+    }
+  }
+
+  return total;
 }
 
 function periodLabel(period, fromIso, toIso) {
@@ -983,6 +1105,8 @@ function openSettings(mode) {
     form.jira_base_url.value = "https://";
     form.timezone.value = "Europe/Kyiv";
     form.day_start.value = "09:00";
+    form.day_hours.value = "8";
+    form.report_hours.value = "10";
   } else {
     const workspace = currentWorkspace();
     if (!workspace) {
@@ -993,6 +1117,8 @@ function openSettings(mode) {
     form.jira_email.value = workspace.jira_email;
     form.timezone.value = workspace.timezone;
     form.day_start.value = workspace.day_start || "09:00";
+    form.day_hours.value = String(workspace.day_hours || 8);
+    form.report_hours.value = String(workspace.report_hours || 10);
     form.jira_api_token.value = "";
   }
   $("[data-view=settings]").hidden = false;
@@ -1051,7 +1177,7 @@ document.addEventListener("click", async (event) => {
     event.target.hidden = true;
     return;
   }
-  const actionNode = event.target.closest("[data-action], [data-tab], [data-period]");
+  const actionNode = event.target.closest("[data-action], [data-tab], [data-period], [data-report]");
   if (!actionNode) {
     if (!event.target.closest(".menu")) {
       closeMenus();
@@ -1064,6 +1190,12 @@ document.addEventListener("click", async (event) => {
   try {
     if (actionNode.dataset.tab) {
       await showTab(actionNode.dataset.tab);
+      return;
+    }
+    if (actionNode.dataset.report) {
+      state.reportView = actionNode.dataset.report;
+      $all("[data-report]").forEach((tab) => tab.classList.toggle("is-on", tab.dataset.report === state.reportView));
+      await loadReport();
       return;
     }
     if (actionNode.dataset.period) {
@@ -1252,8 +1384,42 @@ $("[data-field=workspace]").addEventListener("change", async (event) => {
   await switchWorkspace(value);
 });
 
+function setHolidayToggle(on) {
+  const button = $("[data-field=holiday]");
+  button.classList.toggle("is-on", on);
+  button.setAttribute("aria-pressed", on ? "true" : "false");
+}
+
+$("[data-field=holiday]").addEventListener("click", async () => {
+  const button = $("[data-field=holiday]");
+  if (!state.workspaceId) {
+    setHolidayToggle(false);
+    return;
+  }
+  const next = button.getAttribute("aria-pressed") !== "true";
+  setHolidayToggle(next);
+  try {
+    await api(`/api/workspace/${state.workspaceId}/days/${state.date}`, {
+      method: "PATCH",
+      body: JSON.stringify({holiday: next}),
+    });
+    await loadMonth();
+    if (state.tab === "reports") {
+      await loadReport();
+    }
+  } catch (error) {
+    setHolidayToggle(!next);
+    showToast("Holiday", [{ok: false, text: error.message}]);
+  }
+});
+
 $("[name=day_start]").addEventListener("input", (event) => {
   event.target.setCustomValidity("");
+});
+$all("[name=day_hours], [name=report_hours]").forEach((field) => {
+  field.addEventListener("input", (event) => {
+    event.target.setCustomValidity("");
+  });
 });
 
 $("[data-form=workspace]").addEventListener("submit", async (event) => {
@@ -1267,6 +1433,22 @@ $("[data-form=workspace]").addEventListener("submit", async (event) => {
     return;
   }
   form.day_start.setCustomValidity("");
+  const dayHoursValue = Number(form.day_hours.value);
+  const reportHoursValue = Number(form.report_hours.value);
+  if (!Number.isInteger(dayHoursValue) || dayHoursValue < 1 || dayHoursValue > 24) {
+    form.querySelector(".advanced").open = true;
+    form.day_hours.setCustomValidity("Use a whole number from 1 to 24");
+    form.day_hours.reportValidity();
+    return;
+  }
+  form.day_hours.setCustomValidity("");
+  if (!Number.isInteger(reportHoursValue) || reportHoursValue < dayHoursValue || reportHoursValue > 24) {
+    form.querySelector(".advanced").open = true;
+    form.report_hours.setCustomValidity("Use a whole number from the working day up to 24");
+    form.report_hours.reportValidity();
+    return;
+  }
+  form.report_hours.setCustomValidity("");
   const payload = {
     name: form.name.value,
     jira_base_url: form.jira_base_url.value,
@@ -1274,6 +1456,8 @@ $("[data-form=workspace]").addEventListener("submit", async (event) => {
     jira_api_token: form.jira_api_token.value,
     timezone: form.timezone.value,
     day_start: dayStart,
+    day_hours: dayHoursValue,
+    report_hours: reportHoursValue,
   };
   try {
     if (form.dataset.mode === "create") {
@@ -1289,6 +1473,9 @@ $("[data-form=workspace]").addEventListener("submit", async (event) => {
       state.workspaces = state.workspaces.map((item) => item.id === updated.id ? updated : item);
       $("[data-view=settings]").hidden = true;
       renderWorkspaces();
+      if (state.tab === "reports") {
+        await loadReport();
+      }
     }
   } catch (error) {
     showToast("Workspace", [{ok: false, text: error.message}]);

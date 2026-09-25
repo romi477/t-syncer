@@ -1,4 +1,4 @@
-from tests.conftest import auth_get, create_workspace
+from tests.conftest import auth_get, auth_patch, create_workspace
 from tests.test_worklogs import _add_line
 
 
@@ -19,6 +19,7 @@ def test_month_report_aggregates_local_lines(client):
     assert body["total_minutes"] == 260
     assert body["task_count"] == 2
     assert body["days_with_work"] == 2
+    assert body["working_days"] == 21
     assert [row["issue_key"] for row in body["tasks"]] == ["QBO-1", "QBO-120"]
     qbo1 = body["tasks"][0]
     assert qbo1["total_minutes"] == 140
@@ -41,6 +42,18 @@ def test_week_report_is_monday_sunday(client):
     assert body["to"] == "2026-08-30"
     assert body["total_minutes"] == 60
     assert body["task_count"] == 1
+    assert [day["date"] for day in body["days"]] == [
+        "2026-08-24",
+        "2026-08-25",
+        "2026-08-26",
+        "2026-08-27",
+        "2026-08-28",
+        "2026-08-29",
+        "2026-08-30",
+    ]
+    assert body["days"][0]["total_minutes"] == 60
+    assert body["days"][1]["total_minutes"] == 0
+    assert body["working_days"] == 5
 
 
 def test_lines_without_issue_key_are_not_counted_as_tasks(client):
@@ -55,3 +68,26 @@ def test_lines_without_issue_key_are_not_counted_as_tasks(client):
 
     assert body["total_minutes"] == 120
     assert body["task_count"] == 1
+
+
+def test_holiday_drops_a_working_day_but_keeps_the_hours(client):
+    ws = create_workspace(client)
+    _add_line(client, ws["id"], date="2026-08-03", start="09:00", end="11:00")
+    marked = auth_patch(
+        client,
+        f"/api/workspace/{ws['id']}/days/2026-08-03",
+        json={"holiday": True},
+    )
+
+    assert marked.status_code == 200
+    body = auth_get(
+        client,
+        f"/api/workspace/{ws['id']}/reports",
+        params={"period": "month", "date": "2026-08-03"},
+    ).json()
+
+    assert body["total_minutes"] == 120
+    assert body["working_days"] == 20
+    holiday = next(day for day in body["days"] if day["date"] == "2026-08-03")
+    assert holiday["holiday"] is True
+    assert holiday["total_minutes"] == 120

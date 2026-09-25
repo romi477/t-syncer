@@ -5,7 +5,7 @@ import api
 from tests.conftest import auth_get
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 
 
 def test_package_declares_the_release_version():

@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import HTTPException
 from zoneinfo import ZoneInfo
@@ -9,7 +9,7 @@ from api.comments import format_jira_comment, to_adf
 from api.duration import format_jira_started
 from api.jira import JiraAuthError, JiraError, JiraIssueMissing
 from api.logging import logger
-from api.models import Worklog, Workspace
+from api.models import DayMark, Worklog, Workspace
 from api.parse import norm_issue
 from api.periods import period_bounds
 from api.serialize import (
@@ -51,6 +51,23 @@ def normalize_base_url(url: str) -> str:
 
 
 _DAY_START = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+
+
+def validate_day_hours(value: int | None) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1 or value > 24:
+        raise HTTPException(status_code=400, detail="Working day must be a whole number of hours from 1 to 24")
+
+    return value
+
+
+def validate_report_hours(value: int | None, day_hours: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < day_hours or value > 24:
+        raise HTTPException(
+            status_code=400,
+            detail="Hours on the report must be a whole number from the working day up to 24",
+        )
+
+    return value
 
 
 def validate_day_start(value: str | None) -> str:
@@ -322,7 +339,56 @@ def summarize_days(worklogs: list[Worklog]) -> list[dict]:
     return days
 
 
-def build_report(worklogs: list[Worklog], period: str, start: date, end: date) -> dict:
+def holiday_dates(workspace_id: int, start: date, end: date) -> set[date]:
+    return {
+        mark.work_date
+        for mark in DayMark.select().where(
+            DayMark.workspace == workspace_id,
+            DayMark.work_date >= start,
+            DayMark.work_date <= end,
+            DayMark.holiday == True,  # noqa: E712 — peewee compares the column
+        )
+    }
+
+
+def is_holiday(workspace_id: int, work_date: date) -> bool:
+    mark = DayMark.get_or_none(
+        DayMark.workspace == workspace_id,
+        DayMark.work_date == work_date,
+        DayMark.holiday == True,  # noqa: E712
+    )
+
+    return mark is not None
+
+
+def set_holiday(workspace: Workspace, work_date: date, holiday: bool) -> None:
+    mark = DayMark.get_or_none(DayMark.workspace == workspace, DayMark.work_date == work_date)
+    if mark is None:
+        if holiday:
+            DayMark.create(workspace=workspace, work_date=work_date, holiday=True)
+        return
+    mark.holiday = holiday
+    mark.save()
+
+
+def working_day_count(start: date, end: date, holidays: set[date]) -> int:
+    count = 0
+    cursor = start
+    while cursor <= end:
+        if cursor.weekday() < 5 and cursor not in holidays:
+            count += 1
+        cursor += timedelta(days=1)
+
+    return count
+
+
+def build_report(
+    worklogs: list[Worklog],
+    period: str,
+    start: date,
+    end: date,
+    holidays: set[date] | None = None,
+) -> dict:
     by_key: dict[str, list[Worklog]] = {}
     for worklog in worklogs:
         by_key.setdefault(worklog.issue_key or EMPTY_ISSUE_KEY, []).append(worklog)
@@ -345,6 +411,21 @@ def build_report(worklogs: list[Worklog], period: str, start: date, end: date) -
         )
     tasks.sort(key=lambda row: (-row["total_minutes"], row["issue_key"]))
     task_count = sum(1 for issue_key in by_key if issue_key != EMPTY_ISSUE_KEY)
+    by_date: dict[date, list[Worklog]] = {}
+    for worklog in worklogs:
+        by_date.setdefault(worklog.work_date, []).append(worklog)
+    marked = holidays or set()
+    days = []
+    cursor = start
+    while cursor <= end:
+        days.append(
+            {
+                "date": cursor.isoformat(),
+                "total_minutes": day_total(by_date.get(cursor, [])),
+                "holiday": cursor in marked,
+            }
+        )
+        cursor += timedelta(days=1)
 
     return {
         "period": period,
@@ -353,7 +434,9 @@ def build_report(worklogs: list[Worklog], period: str, start: date, end: date) -
         "total_minutes": total,
         "task_count": task_count,
         "days_with_work": len(days_with_work),
+        "working_days": working_day_count(start, end, marked),
         "tasks": tasks,
+        "days": days,
     }
 
 

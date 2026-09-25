@@ -39,11 +39,19 @@ def init_db(sqlite_db_path: str) -> None:
     close_db()
     db.init(filename, pragmas=_PRAGMAS)
     with db.connection_context():
-        db.create_tables([models.Workspace, models.Worklog])
+        db.create_tables([models.Workspace, models.Worklog, models.DayMark])
         present = {column.name for column in db.get_columns("workspaces")}
         if "day_start" not in present:
             db.execute_sql(
                 "ALTER TABLE workspaces ADD COLUMN day_start TEXT NOT NULL DEFAULT '09:00'"
+            )
+        if "day_hours" not in present:
+            db.execute_sql(
+                "ALTER TABLE workspaces ADD COLUMN day_hours INTEGER NOT NULL DEFAULT 8"
+            )
+        if "report_hours" not in present:
+            db.execute_sql(
+                "ALTER TABLE workspaces ADD COLUMN report_hours INTEGER NOT NULL DEFAULT 10"
             )
 
 

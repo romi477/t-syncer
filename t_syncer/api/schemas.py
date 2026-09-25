@@ -10,6 +10,8 @@ class WorkspaceIn(BaseModel):
     jira_api_token: str
     timezone: str = "Europe/Kyiv"
     day_start: str = "09:00"
+    day_hours: int = 8
+    report_hours: int = 10
 
 
 class WorkspaceUpdate(BaseModel):
@@ -19,6 +21,12 @@ class WorkspaceUpdate(BaseModel):
     jira_api_token: str | None = None
     timezone: str | None = None
     day_start: str | None = None
+    day_hours: int | None = None
+    report_hours: int | None = None
+
+
+class DayPatch(BaseModel):
+    holiday: bool
 
 
 class LineIn(BaseModel):

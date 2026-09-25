@@ -18,7 +18,7 @@
               <path d="M6.2 3.4v9.2"></path>
             </svg>
           </button>
-          <a class="brand" href="https://github.com/romi477/t-syncer" target="_blank" rel="noopener noreferrer" title="Open the T-Syncer repository on GitHub"><span class="brand-t">T‑</span><span class="brand-rest">Syncer</span><span class="brand-version">v1.0.1</span></a>
+          <a class="brand" href="https://github.com/romi477/t-syncer" target="_blank" rel="noopener noreferrer" title="Open the T-Syncer repository on GitHub"><span class="brand-t">T‑</span><span class="brand-rest">Syncer</span><span class="brand-version">v1.1.0</span></a>
         </div>
         <nav class="tabs" aria-label="Main">
           <button class="seg is-on" type="button" data-tab="calendar" title="Calendar (Ctrl+Cmd+←/→)">Calendar</button>
@@ -99,6 +99,11 @@
               <span class="day-meta">
                 <span class="bar-sep">·</span>
                 <span class="day-stat" data-field="day-total">0m</span>
+                <span class="bar-sep">·</span>
+                <button class="holiday-toggle" type="button" data-field="holiday" aria-pressed="false">
+                  <span class="holiday-knob" aria-hidden="true"></span>
+                  Holiday
+                </button>
               </span>
             </div>
             <div class="day-actions">
@@ -174,9 +179,15 @@
                 <button class="link" type="button" data-action="report-today">Today</button>
               </span>
             </div>
-            <div class="tabs">
-              <button class="seg is-on" type="button" data-period="month">Month</button>
-              <button class="seg" type="button" data-period="week">Week</button>
+            <div class="rep-switches">
+              <div class="tabs">
+                <button class="seg is-on" type="button" data-report="days">Days</button>
+                <button class="seg" type="button" data-report="tasks">Tasks</button>
+              </div>
+              <div class="tabs">
+                <button class="seg is-on" type="button" data-period="month">Month</button>
+                <button class="seg" type="button" data-period="week">Week</button>
+              </div>
             </div>
           </div>
           <div class="rep-body">
@@ -185,7 +196,7 @@
               <div class="kpi"><span>Distinct tasks</span><b data-field="rep-tasks">0</b></div>
               <div class="kpi"><span>Days with work</span><b data-field="rep-days">0</b></div>
             </div>
-            <div class="table" data-field="report-table">
+            <div class="table" data-field="report-table" hidden>
               <div class="t-head">
                 <span>TASK</span>
                 <span>TIME</span>
@@ -194,6 +205,14 @@
                 <span style="text-align: right;">SHARE</span>
               </div>
               <div data-field="report-rows"></div>
+            </div>
+            <div class="table" data-field="day-table">
+              <div class="t-head t-days">
+                <span>DAY</span>
+                <span>LOAD</span>
+                <span class="time">TIME</span>
+              </div>
+              <div data-field="day-rows"></div>
             </div>
             <span class="hint" style="display: block; margin-top: 10px;">Local aggregation from SQLite — drafts, errors and synced lines all count.</span>
           </div>
@@ -240,6 +259,14 @@
               <input class="field" name="day_start" value="09:00" placeholder="09:30" required pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" title="HH:MM, for example 09:30" autocomplete="off">
             </label>
             <p class="sub">Empty start on a new line uses this when you press +1h. A previous line’s end still wins.</p>
+            <label>Working day (hours)
+              <input class="field" name="day_hours" type="number" value="8" min="1" max="24" step="1" required inputmode="numeric" title="Whole number from 1 to 24">
+            </label>
+            <p class="sub">Length of a working day. The title capacity and the blue projection use this.</p>
+            <label>Hours on the report
+              <input class="field" name="report_hours" type="number" value="10" min="1" max="24" step="1" required inputmode="numeric" title="Whole number from the working day up to 24">
+            </label>
+            <p class="sub">How many hour-cells the day bar draws. Cells past the working day are amber, and time beyond this number stays the same size. At least the working day. Default 10.</p>
           </details>
           <div class="sheet-actions">
             <button class="icon-btn ghost trash" type="button" data-action="delete-workspace" title="Delete workspace" hidden>

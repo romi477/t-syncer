@@ -18,7 +18,7 @@ from api.db import close_db, db_request, init_db
 from api.jira import default_jira_factory
 from api.logging import configure_logging
 from api.models import Workspace
-from api.schemas import DayLinesIn, LineIn, LinePatch, WorkspaceIn, WorkspaceUpdate
+from api.schemas import DayLinesIn, DayPatch, LineIn, LinePatch, WorkspaceIn, WorkspaceUpdate
 from api.serialize import day_total, worklog_metadata, worklog_public, workspace_public
 from api.service import (
     bulk_push,
@@ -30,6 +30,9 @@ from api.service import (
     delete_line,
     get_worklog,
     get_workspace,
+    holiday_dates,
+    is_holiday,
+    set_holiday,
     normalize_base_url,
     patch_line,
     probe_jira,
@@ -38,7 +41,9 @@ from api.service import (
     report_bounds,
     reset_to_draft,
     summarize_days,
+    validate_day_hours,
     validate_day_start,
+    validate_report_hours,
     validate_timezone,
 )
 
@@ -188,6 +193,8 @@ def create_app(
         url = normalize_base_url(payload.jira_base_url)
         timezone = validate_timezone(payload.timezone)
         day_start = validate_day_start(payload.day_start)
+        day_hours = validate_day_hours(payload.day_hours)
+        report_hours = validate_report_hours(payload.report_hours, day_hours)
         display_name = probe_jira(
             request.app.state.jira_factory,
             url,
@@ -201,6 +208,8 @@ def create_app(
             jira_api_token=payload.jira_api_token,
             timezone=timezone,
             day_start=day_start,
+            day_hours=day_hours,
+            report_hours=report_hours,
             jira_display_name=display_name,
         )
 
@@ -227,6 +236,13 @@ def create_app(
             workspace.timezone = validate_timezone(payload.timezone)
         if payload.day_start is not None:
             workspace.day_start = validate_day_start(payload.day_start)
+        if payload.day_hours is not None:
+            workspace.day_hours = validate_day_hours(payload.day_hours)
+        if payload.day_hours is not None or payload.report_hours is not None:
+            workspace.report_hours = validate_report_hours(
+                payload.report_hours if payload.report_hours is not None else workspace.report_hours,
+                workspace.day_hours,
+            )
         workspace.jira_display_name = probe_jira(
             request.app.state.jira_factory,
             workspace.jira_base_url,
@@ -254,7 +270,24 @@ def create_app(
     ):
         get_workspace(workspace_id)
 
-        return {"days": summarize_days(range_lines(workspace_id, date_from, date_to))}
+        days = summarize_days(range_lines(workspace_id, date_from, date_to))
+        marked = {day.isoformat() for day in holiday_dates(workspace_id, date_from, date_to)}
+        by_date = {item["date"]: item for item in days}
+        for iso in marked:
+            if iso in by_date:
+                by_date[iso]["holiday"] = True
+            else:
+                by_date[iso] = {
+                    "date": iso,
+                    "total_minutes": 0,
+                    "pending_minutes": 0,
+                    "status": "empty",
+                    "holiday": True,
+                }
+        for item in by_date.values():
+            item.setdefault("holiday", False)
+
+        return {"days": [by_date[key] for key in sorted(by_date)]}
 
     @api.get("/workspace/{workspace_id}/days/{work_date}", tags=["Days"], summary="Get day card")
     @db_request
@@ -265,8 +298,17 @@ def create_app(
         return {
             "work_date": work_date.isoformat(),
             "total_minutes": day_total(lines),
+            "holiday": is_holiday(workspace_id, work_date),
             "lines": [worklog_public(line) for line in lines],
         }
+
+    @api.patch("/workspace/{workspace_id}/days/{work_date}", tags=["Days"], summary="Update day properties")
+    @db_request
+    def update_day(workspace_id: int, work_date: date_type, payload: DayPatch):
+        workspace = get_workspace(workspace_id)
+        set_holiday(workspace, work_date, payload.holiday)
+
+        return {"work_date": work_date.isoformat(), "holiday": payload.holiday}
 
     @api.post(
         "/workspace/{workspace_id}/worklogs",
@@ -423,7 +465,7 @@ def create_app(
         start, end = report_bounds(period, anchor or date_type.today())
         lines = range_lines(workspace_id, start, end)
 
-        return build_report(lines, period, start, end)
+        return build_report(lines, period, start, end, holiday_dates(workspace_id, start, end))
 
     app.include_router(api)
 

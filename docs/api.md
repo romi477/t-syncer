@@ -36,7 +36,7 @@ Jira credentials stay on the workspace; they are not the request auth. The API n
 | PATCH | `/api/workspace/{id}` | `WorkspaceUpdate`. Blank / omitted `jira_api_token` keeps the stored token. Re-probes `myself`. |
 | DELETE | `/api/workspace/{id}` | 204. Cascades worklogs. |
 
-`WorkspaceIn`: `name`, `jira_base_url`, `jira_email`, `jira_api_token`, `timezone` (default `Europe/Kyiv`).
+`WorkspaceIn`: `name`, `jira_base_url`, `jira_email`, `jira_api_token`, `timezone` (default `Europe/Kyiv`), `day_start` (`HH:MM`, default `09:00`), `day_hours` (integer 1–24, default 8), `report_hours` (integer from `day_hours` through 24, default 10). Anything else for `day_start`, `day_hours`, or `report_hours` is 400.
 
 Rejected Jira login → 400. Unreachable Jira → 502. Unknown timezone → 400.
 
@@ -45,7 +45,8 @@ Rejected Jira login → 400. Unreachable Jira → 502. Unknown timezone → 400.
 | Method | Path | Notes |
 |--------|------|--------|
 | GET | `/api/workspace/{id}/days?from=&to=` | Per-day summaries (`total_minutes`, `pending_minutes`, `status`) |
-| GET | `/api/workspace/{id}/days/{YYYY-MM-DD}` | Card: lines + `total_minutes` |
+| GET | `/api/workspace/{id}/days/{YYYY-MM-DD}` | Card: lines, `total_minutes`, `holiday` |
+| PATCH | `/api/workspace/{id}/days/{YYYY-MM-DD}` | `{ "holiday": true }`. Hours on that day are unchanged. |
 | POST | `/api/workspace/{id}/worklogs` | Bulk create (201). JSON array of days. External write path. |
 | POST | `/api/workspace/{id}/days/{YYYY-MM-DD}/worklogs` | Create one line (201). |
 | GET | `/api/workspace/{id}/worklogs/{wid}` | SQLite row plus related workspace. Token is `****`. |
@@ -118,4 +119,4 @@ Bulk response:
 - `period` default `month`. Anything other than `month` or `week` → 400.
 - `date` is the anchor (default today). Month = calendar month of that date. Week = Monday–Sunday containing it.
 
-Response: `period`, `from`, `to`, `total_minutes`, `task_count`, `days_with_work`, `tasks[]` (`issue_key`, `total_minutes`, `days`, `first_date`, `last_date`, `share`).
+Response: `period`, `from`, `to`, `total_minutes`, `task_count`, `days_with_work`, `working_days` (Monday–Friday in range, minus holidays), `tasks[]` (`issue_key`, `total_minutes`, `days`, `first_date`, `last_date`, `share`), `days[]` (every date from `from` through `to`: `date`, `total_minutes`, `holiday`).

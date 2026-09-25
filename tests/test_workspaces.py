@@ -93,6 +93,34 @@ def test_day_start_defaults_to_nine_and_requires_hh_mm(client):
     assert auth_get(client, f"/api/workspace/{created['id']}").json()["day_start"] == "09:30"
 
 
+def test_day_and_report_hours_default_and_stay_in_range(client):
+    created = create_workspace(client)
+
+    assert created["day_hours"] == 8
+    assert created["report_hours"] == 10
+
+    updated = auth_patch(
+        client,
+        f"/api/workspace/{created['id']}",
+        json={"day_hours": 6, "report_hours": 9},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["day_hours"] == 6
+    assert updated.json()["report_hours"] == 9
+
+    rejected = auth_patch(
+        client,
+        f"/api/workspace/{created['id']}",
+        json={"report_hours": 5},
+    )
+
+    assert rejected.status_code == 400
+    stored = auth_get(client, f"/api/workspace/{created['id']}").json()
+    assert stored["day_hours"] == 6
+    assert stored["report_hours"] == 9
+
+
 def test_workspace_saves_when_jira_omits_the_display_name(client, fake_jira):
     fake_jira.display_name = None
     response = auth_post(client, "/api/workspace", json=WORKSPACE)

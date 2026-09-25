@@ -117,7 +117,7 @@ Tags (send the code string, e.g. `"dev"`): `DEV`, `SUP`, `QA`, `DOC`, `REL`, `IN
 
 Jira comment is assembled, not typed with brackets: `[QBO-120] [DEV] Text message`, or without a tag `[QBO-120] Text message`. Posted as Atlassian Document Format (REST v3). `started` is always sent in the workspace timezone so backfill does not become “now”.
 
-**Reports** aggregate **local** SQLite lines for the current workspace (default calendar month; ISO week is the other option). Not a Jira report, not CSV.
+**Reports** aggregate **local** SQLite lines for the current workspace (calendar month or ISO week). **Days** is the default: each date, a load bar of `report_hours` cells (default 10; the first `day_hours`, default 8, are the working day), and the working-day capacity in the title (`19d (152h: 96h)` at 8h, capacity then a blue projection). **Tasks** is the per-issue list. Not a Jira report, not CSV. A **Holiday** toggle on the day card drops that day from the working-day count and leaves its hours in place.
 
 ## Tests
 

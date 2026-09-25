@@ -1,5 +1,6 @@
 from peewee import (
     AutoField,
+    BooleanField,
     DateField,
     ForeignKeyField,
     IntegerField,
@@ -24,10 +25,28 @@ class Workspace(BaseModel):
     jira_api_token = TextField()
     timezone = TextField()
     day_start = TextField(default="09:00")
+    day_hours = IntegerField(default=8)
+    report_hours = IntegerField(default=10)
     jira_display_name = TextField(default="")
 
     class Meta:
         table_name = "workspaces"
+
+
+class DayMark(BaseModel):
+    id = AutoField()
+    workspace = ForeignKeyField(
+        Workspace,
+        backref="day_marks",
+        column_name="workspace",
+        on_delete="CASCADE",
+    )
+    work_date = DateField()
+    holiday = BooleanField(default=False)
+
+    class Meta:
+        table_name = "day_marks"
+        indexes = ((("workspace", "work_date"), True),)
 
 
 class Worklog(BaseModel):

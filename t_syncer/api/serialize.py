@@ -49,6 +49,8 @@ def workspace_public(workspace: Workspace) -> dict:
         "jira_api_token": "****",
         "timezone": workspace.timezone,
         "day_start": workspace.day_start or "09:00",
+        "day_hours": workspace.day_hours or 8,
+        "report_hours": workspace.report_hours or 10,
         "jira_display_name": workspace.jira_display_name,
     }
 

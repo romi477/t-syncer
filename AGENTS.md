@@ -30,17 +30,24 @@ REST paths, ADF comment shape, or `started` timestamp format.
 
 ## Domain rules (do not weaken)
 
-- **Workspace** = one Jira Cloud site (name, base URL, email, API token, timezone).
+- **Workspace** = one Jira Cloud site (name, base URL, email, API token, timezone, `day_start`, `day_hours`, `report_hours`).
   No Jira `accountId` field. `GET /rest/api/3/myself` only probes the token.
+  `day_start` is `HH:MM` (default `09:00`). `day_hours` is 1–24 (default 8).
+  `report_hours` is from `day_hours` through 24 (default 10).
 - **Day card** = one date in a workspace: lines + live total. Save, edit, sync the card.
+  **Holiday** is a per-day flag. It removes the day from the working-day count only.
 - Sidebar **+** creates a workspace (same settings sheet, title New workspace).
-- **Reports tab** = local aggregation for the current workspace. Default **calendar month**;
-  ISO week is the other option. Totals: hours + distinct issue keys. Per task: hours,
-  days with work, first–last date in the period. Not a Jira report; not CSV.
+- **Reports tab** = local aggregation for the current workspace. Period is calendar
+  month (default) or ISO week. **Days** is the view that opens: every date, eight
+  hour-cells up to `report_hours` (default 10); cells past `day_hours` are amber and the bar stops there. Rose for Saturday, Sunday, and holidays. Title is `19d (152h: 96h)` —
+  weekdays minus holidays, times `day_hours`, then a blue projection (logged past days,
+  today and later working days at least `day_hours`). **Tasks**: hours, distinct issue keys, days
+  with work, first–last date. Not a Jira report; not CSV.
 - **Worklog line** = issue key + optional tag + message + same-day start–end.
   Duration is computed (integer minutes). Display `2h 20m`.
-  Time steppers: ±1h / ±30m / ±15m. Overlaps allowed. `qbo 120` → `QBO-120`;
-  `930` → `09:00`.
+  Time steppers: ±1h / ±30m / ±15m, including an end earlier than the start.
+  Empty start uses the previous end, else `day_start`. Overlaps allowed.
+  `qbo 120` → `QBO-120`; `930` → `09:00`.
 - **Jira comment** is assembled, never typed with brackets:
   `[QBO-120] [DEV] Text message` or `[QBO-120] Text message` if no tag.
   Sent as Atlassian Document Format (API v3).

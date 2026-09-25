@@ -13,3 +13,5 @@ build/
 .vscode/
 docs_/
 logs/
+
+tsyncer.db.backup*
