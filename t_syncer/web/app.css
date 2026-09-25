@@ -359,6 +359,14 @@ input:focus, select:focus {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.field-time.is-before-start {
+  border-color: var(--unsaved);
+  color: var(--unsaved);
+}
+.field-time.is-before-start:focus {
+  border-color: var(--unsaved) !important;
+  box-shadow: 0 0 0 3.5px rgba(196, 137, 153, 0.28);
+}
 select.field[name=tag] {
   padding: 0 4px;
   text-align: center;
@@ -366,6 +374,8 @@ select.field[name=tag] {
 }
 .field-msg {
   grid-column: 2 / -1;
+  min-width: 0;
+  max-width: 100%;
   height: 25px;
   border-color: rgba(0, 0, 0, 0.13);
   box-shadow: none;
@@ -563,6 +573,7 @@ select.field[name=tag] {
   z-index: 2;
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 13px 18px;
@@ -638,7 +649,7 @@ select.field[name=tag] {
 }
 .cols, .row-grid {
   display: grid;
-  grid-template-columns: 6px 100px 52px 102px 128px minmax(0, 1fr) 56px 90px;
+  grid-template-columns: 6px minmax(0, 100px) minmax(0, 52px) minmax(0, 102px) minmax(0, 128px) minmax(0, 1fr) minmax(0, 56px) 88px;
   column-gap: 10px;
   align-items: center;
 }
@@ -660,8 +671,9 @@ select.field[name=tag] {
 
 .row {
   position: relative;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 6px 100px 52px 102px 128px minmax(0, 1fr) 56px 90px;
+  grid-template-columns: 6px minmax(0, 100px) minmax(0, 52px) minmax(0, 102px) minmax(0, 128px) minmax(0, 1fr) minmax(0, 56px) 88px;
   column-gap: 10px;
   row-gap: 6px;
   grid-template-rows: auto auto;
@@ -719,18 +731,19 @@ select.field[name=tag] {
 .range-head,
 .range {
   display: grid;
-  grid-template-columns: 48px 48px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   column-gap: 6px;
   align-items: center;
+  min-width: 0;
 }
-.steps { display: flex; align-items: center; gap: 6px; }
+.steps { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .step {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
-  min-width: 40px;
-  flex: none;
+  min-width: 0;
+  flex: 1 1 0;
 }
 .steps.is-locked { opacity: 0.45; }
 .step button {
@@ -772,6 +785,7 @@ select.field[name=tag] {
   color: var(--blue-ink);
 }
 .dur {
+  min-width: 0;
   text-align: center;
   font-size: 13px;
   font-weight: 500;
@@ -785,7 +799,7 @@ select.field[name=tag] {
   align-items: center;
   justify-content: flex-end;
   gap: 5px;
-  margin-left: 10px;
+  min-width: 0;
   position: relative;
 }
 .row-actions .icon-btn {
@@ -1044,6 +1058,22 @@ select.field[name=tag] {
 .form { display: grid; gap: 9px; }
 .form label { display: grid; gap: 4px; font-size: 11.5px; color: #616875; }
 .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.advanced {
+  border-top: 0.5px solid var(--line);
+  padding-top: 8px;
+}
+.advanced summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--quiet);
+  list-style: none;
+}
+.advanced summary::-webkit-details-marker { display: none; }
+.advanced summary::before { content: "▸  "; }
+.advanced[open] summary::before { content: "▾  "; }
+.advanced label { display: grid; gap: 4px; margin-top: 9px; font-size: 11.5px; color: #616875; }
+.advanced .sub { margin: 6px 0 0; }
 .sheet-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 2px; }
 .sheet-actions .trash { margin-right: auto; }
 .sheet-metadata { width: min(560px, 92%); }

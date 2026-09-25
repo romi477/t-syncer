@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 from fastapi import HTTPException
@@ -47,6 +48,17 @@ def require_editable(worklog: Worklog) -> None:
 
 def normalize_base_url(url: str) -> str:
     return url.strip().rstrip("/")
+
+
+_DAY_START = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+
+
+def validate_day_start(value: str | None) -> str:
+    text = (value or "").strip()
+    if _DAY_START.fullmatch(text) is None:
+        raise HTTPException(status_code=400, detail="Work starts at must be HH:MM")
+
+    return text
 
 
 def validate_timezone(name: str) -> str:

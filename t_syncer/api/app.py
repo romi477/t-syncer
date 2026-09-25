@@ -38,6 +38,7 @@ from api.service import (
     report_bounds,
     reset_to_draft,
     summarize_days,
+    validate_day_start,
     validate_timezone,
 )
 
@@ -186,6 +187,7 @@ def create_app(
     def create_workspace(payload: WorkspaceIn, request: Request):
         url = normalize_base_url(payload.jira_base_url)
         timezone = validate_timezone(payload.timezone)
+        day_start = validate_day_start(payload.day_start)
         display_name = probe_jira(
             request.app.state.jira_factory,
             url,
@@ -198,6 +200,7 @@ def create_app(
             jira_email=payload.jira_email.strip(),
             jira_api_token=payload.jira_api_token,
             timezone=timezone,
+            day_start=day_start,
             jira_display_name=display_name,
         )
 
@@ -222,6 +225,8 @@ def create_app(
             workspace.jira_api_token = payload.jira_api_token
         if payload.timezone is not None:
             workspace.timezone = validate_timezone(payload.timezone)
+        if payload.day_start is not None:
+            workspace.day_start = validate_day_start(payload.day_start)
         workspace.jira_display_name = probe_jira(
             request.app.state.jira_factory,
             workspace.jira_base_url,

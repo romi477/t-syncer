@@ -69,6 +69,30 @@ def test_delete_workspace_removes_it_and_its_lines(client):
     assert auth_get(client, f"/api/workspace/{keep['id']}").status_code == 200
 
 
+def test_day_start_defaults_to_nine_and_requires_hh_mm(client):
+    created = create_workspace(client)
+
+    assert created["day_start"] == "09:00"
+
+    updated = auth_patch(
+        client,
+        f"/api/workspace/{created['id']}",
+        json={"day_start": "09:30"},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["day_start"] == "09:30"
+
+    rejected = auth_patch(
+        client,
+        f"/api/workspace/{created['id']}",
+        json={"day_start": "930"},
+    )
+
+    assert rejected.status_code == 400
+    assert auth_get(client, f"/api/workspace/{created['id']}").json()["day_start"] == "09:30"
+
+
 def test_workspace_saves_when_jira_omits_the_display_name(client, fake_jira):
     fake_jira.display_name = None
     response = auth_post(client, "/api/workspace", json=WORKSPACE)

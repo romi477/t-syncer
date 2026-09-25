@@ -143,6 +143,17 @@ function tagHelp(code) {
   return tag ? tag.label : "No tag on this line";
 }
 
+function endIsBeforeStart(start, end) {
+  const from = toMinutes(start);
+  const to = toMinutes(end);
+  // 00:00 closes the day (22:00–00:00), so it is not an end that sits earlier.
+  if (from === null || to === null || to === 0) {
+    return false;
+  }
+
+  return to < from;
+}
+
 function durationMinutes(start, end) {
   const from = toMinutes(start);
   const to = toMinutes(end);
@@ -183,7 +194,9 @@ function addTime(start, end, delta, fallbackStart) {
     nextEnd = nextStart;
   }
   const next = endMinutes(nextStart, nextEnd) + delta;
-  if (next > 24 * 60 || next <= toMinutes(nextStart)) {
+  // An end earlier than the start is still a time the user can step. Only the
+  // edges of the day stop the button: before 00:00 and past midnight.
+  if (next > 24 * 60 || next < 0) {
     return [nextStart, end];
   }
   if (next === 24 * 60) {
@@ -401,7 +414,26 @@ function fallbackStart() {
     }
   }
 
-  return "09:00";
+  const workspace = currentWorkspace();
+
+  return (workspace && workspace.day_start) || "09:00";
+}
+
+function latestEnd() {
+  let best = null;
+  let bestMinutes = -1;
+  for (const line of state.lines) {
+    if (!line.end) {
+      continue;
+    }
+    const minutes = endMinutes(line.start || line.end, line.end);
+    if (minutes > bestMinutes) {
+      bestMinutes = minutes;
+      best = line.end;
+    }
+  }
+
+  return best || fallbackStart();
 }
 
 function newLine(seed = {}) {
@@ -628,7 +660,7 @@ function renderRow(line) {
       <select class="field${frozenClass}" name="tag" aria-label="Tag" title="${escapeAttr(tagHelp(line.tag))}" ${locked ? "disabled" : ""}>${tagOptions}</select>
       <div class="range">
         <input class="field field-time${frozenClass}" name="start" value="${escapeAttr(line.start || "")}" aria-label="Start" autocomplete="off" ${locked ? "disabled" : ""}>
-        <input class="field field-time${frozenClass}" name="end" value="${escapeAttr(line.end || "")}" aria-label="End" autocomplete="off" ${locked ? "disabled" : ""}>
+        <input class="field field-time${frozenClass}${endIsBeforeStart(line.start, line.end) ? " is-before-start" : ""}" name="end" value="${escapeAttr(line.end || "")}" aria-label="End" autocomplete="off" ${locked ? "disabled" : ""}>
       </div>
       <div class="steps ${locked ? "is-locked" : ""}">
         <div class="step"><button type="button" data-delta="60">+1h</button><button class="down" type="button" data-delta="-60">−1h</button></div>
@@ -737,6 +769,7 @@ function bindRows() {
 
 function refreshRowDuration(row, line) {
   line.duration_minutes = durationMinutes(line.start, line.end);
+  row.querySelector("[name=end]").classList.toggle("is-before-start", endIsBeforeStart(line.start, line.end));
   row.querySelector("[data-field=duration]").textContent = line.duration_minutes
     ? formatDuration(line.duration_minutes)
     : "—";
@@ -944,10 +977,12 @@ function openSettings(mode) {
   $("[data-field=sheet-title]").textContent = mode === "create" ? "New workspace" : "Workspace settings";
   $("[data-field=sheet-action]").textContent = mode === "create" ? "Probe & create" : "Probe & save";
   $("[data-action=delete-workspace]").hidden = mode === "create";
+  form.querySelector(".advanced").open = false;
   if (mode === "create") {
     form.reset();
     form.jira_base_url.value = "https://";
     form.timezone.value = "Europe/Kyiv";
+    form.day_start.value = "09:00";
   } else {
     const workspace = currentWorkspace();
     if (!workspace) {
@@ -957,6 +992,7 @@ function openSettings(mode) {
     form.jira_base_url.value = workspace.jira_base_url;
     form.jira_email.value = workspace.jira_email;
     form.timezone.value = workspace.timezone;
+    form.day_start.value = workspace.day_start || "09:00";
     form.jira_api_token.value = "";
   }
   $("[data-view=settings]").hidden = false;
@@ -1119,7 +1155,14 @@ document.addEventListener("click", async (event) => {
       const [from, to] = periodBounds("month", state.date);
       await pushResults("Push month", `/api/workspace/${state.workspaceId}/push?from=${from}&to=${to}`, actionNode);
     } else if (action === "duplicate" && line) {
-      state.lines.push(newLine({issue_key: line.issue_key, tag: line.tag, message: line.message}));
+      const at = latestEnd();
+      state.lines.push(newLine({
+        issue_key: line.issue_key,
+        tag: line.tag,
+        message: line.message,
+        start: at,
+        end: at,
+      }));
       refreshDirty();
       renderDay();
     } else if (action === "get-metadata" && line) {
@@ -1209,15 +1252,28 @@ $("[data-field=workspace]").addEventListener("change", async (event) => {
   await switchWorkspace(value);
 });
 
+$("[name=day_start]").addEventListener("input", (event) => {
+  event.target.setCustomValidity("");
+});
+
 $("[data-form=workspace]").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
+  const dayStart = form.day_start.value.trim();
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dayStart)) {
+    form.querySelector(".advanced").open = true;
+    form.day_start.setCustomValidity("Use HH:MM, for example 09:30");
+    form.day_start.reportValidity();
+    return;
+  }
+  form.day_start.setCustomValidity("");
   const payload = {
     name: form.name.value,
     jira_base_url: form.jira_base_url.value,
     jira_email: form.jira_email.value,
     jira_api_token: form.jira_api_token.value,
     timezone: form.timezone.value,
+    day_start: dayStart,
   };
   try {
     if (form.dataset.mode === "create") {

@@ -78,7 +78,9 @@ def add_time(
         end = start
 
     new_end = _end_minutes(start, end) + delta_minutes
-    if new_end > _MIDNIGHT or new_end <= _as_minutes(start):
+    # An end earlier than the start is still a time the user can step. Only the
+    # edges of the day stop the button: before 00:00 and past midnight.
+    if new_end > _MIDNIGHT or new_end < 0:
 
         return start, end
     if new_end == _MIDNIGHT:

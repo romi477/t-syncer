@@ -44,11 +44,16 @@ def test_add_time_plus_from_empty_end():
     assert end == time(10, 0)
 
 
-def test_add_time_minus_no_op_if_would_not_stay_after_start():
+def test_add_time_minus_may_land_before_start():
     start, end = add_time(time(9, 0), time(9, 30), -60)
 
     assert start == time(9, 0)
-    assert end == time(9, 30)
+    assert end == time(8, 30)
+
+
+def test_add_time_steps_when_end_is_already_before_start():
+    assert add_time(time(9, 0), time(8, 0), 60) == (time(9, 0), time(9, 0))
+    assert add_time(time(9, 0), time(8, 0), -60) == (time(9, 0), time(7, 0))
 
 
 def test_add_time_plus_refuses_overnight():
@@ -84,3 +89,9 @@ def test_add_time_steps_back_from_midnight():
     start, end = add_time(time(22, 0), time(0, 0), -60)
 
     assert (start, end) == (time(22, 0), time(23, 0))
+
+
+def test_add_time_stops_before_midnight_morning():
+    start, end = add_time(time(9, 0), time(0, 15), -30)
+
+    assert (start, end) == (time(9, 0), time(0, 15))

@@ -23,6 +23,7 @@ class Workspace(BaseModel):
     jira_email = TextField()
     jira_api_token = TextField()
     timezone = TextField()
+    day_start = TextField(default="09:00")
     jira_display_name = TextField(default="")
 
     class Meta:
